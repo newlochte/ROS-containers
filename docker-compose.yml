@@ -1,0 +1,34 @@
+services:
+  ros:
+    privileged: true  # hardware access: cameras, serial, GPIO, etc.
+    network_mode: host  # ROS2 DDS discovery uses multicast — bridge mode breaks node visibility
+    ipc: host  # shared memory transport between ROS2 nodes (zero-copy topics)
+    pid: host  # 1Password agent uses SO_PEERCRED to validate callers — requires shared PID namespace
+    stop_grace_period: "1s"  # bash ignores SIGTERM, so skip the 10s wait and go straight to SIGKILL
+    stdin_open: true
+    tty: true
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ROS_DISTRO: ${ROS_DISTRO:-jazzy}
+    image: ros2-${ROS_DISTRO:-jazzy}
+    container_name: ros2-${ROS_DISTRO:-jazzy}
+    runtime: nvidia  # requires nvidia-container-toolkit; use `deploy.resources` instead if not set as default runtime
+    environment:
+      - DISPLAY=${DISPLAY}  # XWayland display (e.g. :1) — needed by Qt/xcb for rviz2, rqt
+      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY}  # Wayland compositor socket name (e.g. wayland-1) for native Wayland apps
+      - XDG_RUNTIME_DIR=/run/user/1000  # hardcoded to mount point below — host value may differ but volume always lands here
+      - XAUTHORITY=/home/ubuntu/.Xauthority  # X11 auth cookie path inside the container for xcb/XWayland
+      - NVIDIA_VISIBLE_DEVICES=all  # expose all GPUs to the container
+      - NVIDIA_DRIVER_CAPABILITIES=all  # enable compute, graphics, display, video — needed for GL/CUDA/rviz2
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix  # X11 Unix socket dir — lets container reach XWayland for GUI apps
+      - ${XDG_RUNTIME_DIR}:/run/user/1000  # Wayland socket (wayland-1) lives here; also used by pipewire/pulse
+      - ${HOME}/.Xauthority:/home/ubuntu/.Xauthority:ro  # X11 auth cookie — required when xcb/XWayland is used as fallback
+      - ${PWD}:/home/ubuntu/ws  # workspace: run script from your ws dir and it maps into the standard ROS ws path
+      - ~/.claude:/home/ubuntu/.claude  # claude code credentials and session data for VS Code extension inside container
+      - ~/.1password/agent.sock:/home/ubuntu/.1password/agent.sock:ro  # 1Password agent — SSH auth (via IdentityAgent in ~/.ssh/config) and commit signing
+      - ~/.ssh:/home/ubuntu/.ssh:ro  # SSH config and known_hosts — IdentityAgent and host fingerprints
+      - /opt/1Password/op-ssh-sign:/opt/1Password/op-ssh-sign:ro  # SSH commit signing binary
+      - ${GIT_CONFIG_HOST}:/home/ubuntu/.gitconfig  # git config — path resolved by ros-container.sh for portability
