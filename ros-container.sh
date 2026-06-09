@@ -18,6 +18,9 @@ fi
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
+
 ACTION=${1:-start}
 DISTRO=${2:-jazzy}
 
@@ -51,25 +54,25 @@ xhost +local: 2>/dev/null || true
 case $ACTION in
   start)
     echo "Starting ROS2 $DISTRO container..."
-    docker compose -f ~/ros2/docker-compose.yml up --force-recreate -d ros
+    docker compose -f "$COMPOSE_FILE" up --force-recreate -d ros
     ;;
   shell)
     if ! docker ps --format '{{.Names}}' | grep -q "^ros2-$DISTRO$"; then
       echo "Container ros2-$DISTRO is not running, starting it..."
-      docker compose -f ~/ros2/docker-compose.yml up --force-recreate -d ros
+      docker compose -f "$COMPOSE_FILE" up --force-recreate -d ros
     fi
     echo "Opening shell in ros2-$DISTRO..."
     docker exec -it ros2-$DISTRO bash
     ;;
   rebuild)
     echo "Rebuilding and restarting ROS2 $DISTRO container..."
-    docker compose -f ~/ros2/docker-compose.yml down
-    docker compose -f ~/ros2/docker-compose.yml build --no-cache ros
-    docker compose -f ~/ros2/docker-compose.yml up --force-recreate -d ros
+    docker compose -f "$COMPOSE_FILE" down
+    docker compose -f "$COMPOSE_FILE" build --no-cache ros
+    docker compose -f "$COMPOSE_FILE" up --force-recreate -d ros
     ;;
   stop)
     echo "Stopping and removing ros2-$DISTRO..."
-    docker compose -f ~/ros2/docker-compose.yml down
+    docker compose -f "$COMPOSE_FILE" down
     ;;
   *)
     echo "Unknown action: $ACTION. Use start|shell|stop|rebuild"
