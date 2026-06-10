@@ -17,8 +17,9 @@ RUN apt-get update && apt-get install -y \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Give ubuntu passwordless sudo and suppress the first-login sudo hint
-RUN echo "ubuntu ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu \
+# humble (Ubuntu 22.04) doesn't pre-create the ubuntu user unlike jazzy (24.04)
+RUN id ubuntu 2>/dev/null || useradd -m -s /bin/bash ubuntu \
+    && echo "ubuntu ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu \
     && chmod 0440 /etc/sudoers.d/ubuntu \
     && touch /home/ubuntu/.sudo_as_admin_successful
 
